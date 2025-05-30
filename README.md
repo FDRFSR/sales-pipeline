@@ -308,10 +308,10 @@ Questo progetto è distribuito sotto licenza **MIT**. Vedi [LICENSE](LICENSE) pe
 
 ## 📊 Stats
 
-![GitHub stars](https://img.shields.io/github/stars/yourusername/sales-pipeline-manager?style=social)
-![GitHub forks](https://img.shields.io/github/forks/yourusername/sales-pipeline-manager?style=social)
-![GitHub issues](https://img.shields.io/github/issues/yourusername/sales-pipeline-manager)
-![GitHub license](https://img.shields.io/github/license/yourusername/sales-pipeline-manager)
+![GitHub stars](https://img.shields.io/github/stars/FDRFSR/sales-pipeline?style=social)
+![GitHub forks](https://img.shields.io/github/forks/FDRFSR/sales-pipeline?style=social)
+![GitHub issues](https://img.shields.io/github/issues/FDRFSR/sales-pipeline)
+![GitHub license](https://img.shields.io/github/license/FDRFSR/sales-pipeline)
 
 ---
 
