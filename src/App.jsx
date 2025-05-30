@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  ComposedChart
 } from 'recharts';
 import { 
   TrendingUp, TrendingDown, Target, Users, Euro, Calendar,
@@ -12,6 +13,8 @@ import {
 } from 'lucide-react';
 
 const UnifiedSalesPipeline = () => {
+  console.log('🚀 Sales Pipeline Loading...');
+  
   // Stati delle trattative
   const dealStates = [
     { id: 'da_visitare', name: 'Da Visitare', color: 'bg-blue-500', description: 'Cliente da incontrare ancora' },
@@ -45,6 +48,7 @@ const UnifiedSalesPipeline = () => {
   
   // Dati delle trattative
   const [deals, setDeals] = useState([]);
+  const [isLoaded, setIsLoaded] = useState(false); // Flag per evitare salvataggio prematuro
 
   // State per form e filtri
   const [showForm, setShowForm] = useState(false);
@@ -65,6 +69,41 @@ const UnifiedSalesPipeline = () => {
     compagnia: ''
   });
 
+  // Carica dati all'avvio (UNA SOLA VOLTA)
+  useEffect(() => {
+    try {
+      const savedDeals = localStorage.getItem('salesPipeline_deals');
+      if (savedDeals) {
+        const parsedDeals = JSON.parse(savedDeals);
+        if (parsedDeals.length > 0) {
+          const dealsWithDates = parsedDeals.map(deal => ({
+            ...deal,
+            dataCreazione: new Date(deal.dataCreazione),
+            ultimaModifica: new Date(deal.ultimaModifica)
+          }));
+          setDeals(dealsWithDates);
+          console.log(`✅ Caricati ${dealsWithDates.length} deals dal localStorage`);
+        }
+      }
+      setIsLoaded(true); // Marca come caricato
+    } catch (error) {
+      console.error('Errore nel caricare i dati:', error);
+      setIsLoaded(true);
+    }
+  }, []); // Dipendenze vuote = solo al mount
+
+  // Salva deals automaticamente (SOLO dopo il caricamento iniziale)
+  useEffect(() => {
+    if (isLoaded) { // Salva solo se i dati sono stati caricati
+      try {
+        localStorage.setItem('salesPipeline_deals', JSON.stringify(deals));
+        console.log(`💾 Salvati ${deals.length} deals nel localStorage`);
+      } catch (error) {
+        console.error('Errore nel salvare i dati:', error);
+      }
+    }
+  }, [deals, isLoaded]);
+
   // Calcola statistiche principali
   const stats = useMemo(() => {
     const totale = deals.length;
@@ -84,7 +123,7 @@ const UnifiedSalesPipeline = () => {
     };
   }, [deals]);
 
-  // Dati per analytics
+  // Dati per analytics avanzate
   const analyticsData = useMemo(() => {
     // Performance per commerciale
     const salesData = commerciali.map(commerciale => {
@@ -105,12 +144,15 @@ const UnifiedSalesPipeline = () => {
     // Distribuzione per ramo
     const ramiData = ramiAssicurativi.map(ramo => {
       const dealsByRamo = deals.filter(d => d.ramo === ramo);
-      const volume = dealsByRamo.reduce((sum, deal) => sum + deal.totale, 0);
+      const acquisite = dealsByRamo.filter(d => d.stato === 'acquisita');
+      const volume = acquisite.reduce((sum, deal) => sum + deal.totale, 0);
       
       return {
         ramo,
         count: dealsByRamo.length,
+        acquisite: acquisite.length,
         volume,
+        tasso: dealsByRamo.length > 0 ? ((acquisite.length / dealsByRamo.length) * 100).toFixed(1) : 0,
         color: `hsl(${Math.random() * 360}, 70%, 50%)`
       };
     }).filter(data => data.count > 0);
@@ -128,7 +170,51 @@ const UnifiedSalesPipeline = () => {
       };
     }).filter(data => data.count > 0);
 
-    return { salesData, ramiData, pipelineData };
+    // Trend mensile (ultimi 12 mesi)
+    const monthlyTrends = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString('it-IT', { month: 'short', year: '2-digit' });
+      
+      const monthDeals = deals.filter(deal => {
+        const dealDate = new Date(deal.dataCreazione);
+        return dealDate.getMonth() === date.getMonth() && dealDate.getFullYear() === date.getFullYear();
+      });
+      
+      const acquisite = monthDeals.filter(d => d.stato === 'acquisita');
+      const volume = acquisite.reduce((sum, deal) => sum + deal.totale, 0);
+      
+      monthlyTrends.push({
+        mese: monthName,
+        trattative: monthDeals.length,
+        acquisite: acquisite.length,
+        volume,
+        tasso: monthDeals.length > 0 ? ((acquisite.length / monthDeals.length) * 100).toFixed(1) : 0
+      });
+    }
+
+    // Funnel conversione
+    const funnelData = [
+      { stage: 'Da Visitare', count: deals.filter(d => d.stato === 'da_visitare').length, color: '#3B82F6' },
+      { stage: 'Visionato', count: deals.filter(d => d.stato === 'visionato').length, color: '#EAB308' },
+      { stage: 'In Trattativa', count: deals.filter(d => d.stato === 'in_trattativa').length, color: '#F97316' },
+      { stage: 'Da Quotare', count: deals.filter(d => d.stato === 'da_quotare').length, color: '#8B5CF6' },
+      { stage: 'Quotato', count: deals.filter(d => d.stato === 'quotato').length, color: '#6366F1' },
+      { stage: 'Acquisita', count: deals.filter(d => d.stato === 'acquisita').length, color: '#10B981' }
+    ].filter(stage => stage.count > 0);
+
+    // Performance radar per top commerciali
+    const topCommercials = salesData.sort((a, b) => b.volume - a.volume).slice(0, 5);
+    const radarData = topCommercials.map(commercial => ({
+      commerciale: commercial.commerciale.split(' ')[0], // Solo nome
+      volume: Math.round((commercial.volume / Math.max(...topCommercials.map(c => c.volume))) * 100),
+      trattative: Math.round((commercial.trattative / Math.max(...topCommercials.map(c => c.trattative))) * 100),
+      tasso: commercial.tasso,
+      acquisite: Math.round((commercial.acquisite / Math.max(...topCommercials.map(c => c.acquisite))) * 100)
+    }));
+
+    return { salesData, ramiData, pipelineData, monthlyTrends, funnelData, radarData };
   }, [deals]);
 
   // Filtra deals
@@ -260,6 +346,89 @@ const UnifiedSalesPipeline = () => {
     ));
   };
 
+  // Funzioni Export/Import
+  const exportData = () => {
+    const dataToExport = {
+      deals,
+      exportDate: new Date().toISOString(),
+      version: '1.0',
+      appName: 'Sales Pipeline Manager',
+      totalDeals: deals.length,
+      statistics: stats
+    };
+    
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sales-pipeline-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`✅ Esportati ${deals.length} deals con successo!`);
+  };
+
+  const importData = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        
+        if (importedData.deals && Array.isArray(importedData.deals)) {
+          const dealsWithDates = importedData.deals.map(deal => ({
+            ...deal,
+            id: deal.id || Date.now() + Math.random(), // Assicura ID unico
+            dataCreazione: new Date(deal.dataCreazione),
+            ultimaModifica: new Date(deal.ultimaModifica)
+          }));
+          
+          const confirmMessage = `📥 Importare ${dealsWithDates.length} trattative?\n\n` +
+            `File: ${importedData.appName || 'Sales Pipeline'}\n` +
+            `Data export: ${new Date(importedData.exportDate).toLocaleDateString('it-IT')}\n` +
+            `Versione: ${importedData.version || 'N/A'}\n\n` +
+            `⚠️ I dati attuali (${deals.length} deals) verranno sostituiti.`;
+            
+          if (window.confirm(confirmMessage)) {
+            setDeals(dealsWithDates);
+            alert(`✅ ${dealsWithDates.length} trattative importate con successo!`);
+          }
+        } else {
+          alert('❌ File non valido. Assicurati di importare un backup esportato da questa applicazione.');
+        }
+      } catch (error) {
+        alert('❌ Errore nella lettura del file. Verifica che sia un file JSON valido.');
+        console.error('Errore import:', error);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+  };
+
+  const clearAllData = () => {
+    const confirmMessage = `🗑️ Sei sicuro di voler cancellare TUTTI i dati?\n\n` +
+      `Questo cancellerà definitivamente:\n` +
+      `• ${deals.length} trattative\n` +
+      `• Tutte le statistiche\n` +
+      `• I filtri salvati\n\n` +
+      `💡 Consiglio: fai prima un export come backup!\n\n` +
+      `❌ Questa azione NON può essere annullata.`;
+      
+    if (window.confirm(confirmMessage)) {
+      localStorage.removeItem('salesPipeline_deals');
+      setDeals([]);
+      setFilterState('all');
+      setFilterCommercial('all');
+      alert('🗑️ Tutti i dati sono stati cancellati.');
+    }
+  };
+
   // Sidebar Navigation
   const navigationItems = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -277,7 +446,7 @@ const UnifiedSalesPipeline = () => {
             <BarChart3 size={64} className="mx-auto" />
           </div>
           <h3 className="text-xl font-semibold text-gray-600 mb-2">Nessun Dato Disponibile</h3>
-          <p className="text-gray-500 mb-6">Inizia creando la tua prima trattativa per vedere le analytics</p>
+          <p className="text-gray-500 mb-6">Inizia creando la tua prima trattativa per vedere le analytics avanzate</p>
           <button
             onClick={() => {
               setCurrentView('pipeline');
@@ -288,6 +457,24 @@ const UnifiedSalesPipeline = () => {
             <PlusCircle size={16} />
             Crea Prima Trattativa
           </button>
+          
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+            <h4 className="text-sm font-semibold text-blue-800 mb-2">🚀 Funzionalità Premium</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-blue-700">
+              <div className="flex items-center gap-1">
+                <Download size={12} />
+                <span>Export/Import dati</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <BarChart3 size={12} />
+                <span>6 grafici avanzati</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Target size={12} />
+                <span>Salvataggio automatico</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       
@@ -353,7 +540,7 @@ const UnifiedSalesPipeline = () => {
             </div>
           </div>
 
-          {/* Charts */}
+          {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Performance Commerciali */}
             <div className="bg-white p-6 rounded-2xl shadow-lg">
@@ -416,6 +603,105 @@ const UnifiedSalesPipeline = () => {
             </div>
           </div>
 
+          {/* Charts Row 2 - Nuovi Grafici Avanzati */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Trend Mensile */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Trend Ultimi 12 Mesi</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={analyticsData.monthlyTrends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mese" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="trattative" fill="#8884d8" name="Trattative" />
+                  <Line 
+                    yAxisId="right" 
+                    type="monotone" 
+                    dataKey="acquisite" 
+                    stroke="#82ca9d" 
+                    strokeWidth={3}
+                    name="Acquisite"
+                  />
+                  <Line 
+                    yAxisId="right" 
+                    type="monotone" 
+                    dataKey="tasso" 
+                    stroke="#ff7300" 
+                    strokeWidth={2}
+                    name="Tasso %"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Distribuzione Rami */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Performance per Ramo</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analyticsData.ramiData.slice(0, 8)} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="ramo" type="category" width={80} fontSize={11} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="#8B5CF6" name="Trattative" />
+                  <Bar dataKey="acquisite" fill="#10B981" name="Acquisite" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Charts Row 3 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Funnel Conversione */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Funnel di Conversione</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analyticsData.funnelData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="stage" angle={-45} textAnchor="end" height={80} fontSize={11} />
+                  <YAxis />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="#6366F1" radius={[4, 4, 0, 0]}>
+                    {analyticsData.funnelData.map((entry, index) => (
+                      <Cell key={`funnel-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Radar Chart Top Performers */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Radar Top 5 Commerciali</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <RadarChart data={analyticsData.radarData}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="commerciale" />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                  <Radar
+                    name="Volume (%)"
+                    dataKey="volume"
+                    stroke="#8884d8"
+                    fill="#8884d8"
+                    fillOpacity={0.3}
+                  />
+                  <Radar
+                    name="Tasso Conv."
+                    dataKey="tasso"
+                    stroke="#82ca9d"
+                    fill="#82ca9d"
+                    fillOpacity={0.3}
+                  />
+                  <Tooltip />
+                  <Legend />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           {/* Top Performers Table */}
           <div className="bg-white p-6 rounded-2xl shadow-lg">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Top Performers</h3>
@@ -453,6 +739,40 @@ const UnifiedSalesPipeline = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Info Storage & Export */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-2xl shadow-lg border border-green-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="text-green-600">
+                  <Award size={32} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">💾 Sistema Completo Attivo</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <strong>{deals.length} trattative</strong> gestite • 
+                    <strong> {analyticsData.salesData.length} commerciali</strong> attivi • 
+                    <strong> {analyticsData.ramiData.length} rami</strong> assicurativi
+                  </p>
+                  <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                    <span>• Backup automatico locale</span>
+                    <span>• Export/Import disponibile</span>
+                    <span>• 6 grafici analytics avanzati</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportData}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <Download size={16} />
+                  Backup
+                </button>
+              </div>
             </div>
           </div>
         </>
@@ -776,6 +1096,43 @@ const UnifiedSalesPipeline = () => {
                   Nuova Trattativa
                 </button>
               )}
+              
+              {/* Menu Gestione Dati */}
+              <div className="flex items-center gap-2">
+                {deals.length > 0 && (
+                  <button
+                    onClick={exportData}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    title="Scarica backup dei dati"
+                  >
+                    <Download size={16} />
+                    <span className="hidden sm:inline">Export</span>
+                  </button>
+                )}
+                
+                <label className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
+                       title="Carica dati da backup">
+                  <RefreshCw size={16} />
+                  <span className="hidden sm:inline">Import</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={importData}
+                    className="hidden"
+                  />
+                </label>
+                
+                {deals.length > 0 && (
+                  <button
+                    onClick={clearAllData}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    title="Cancella tutti i dati"
+                  >
+                    <Trash2 size={16} />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
