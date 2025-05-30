@@ -13,8 +13,6 @@ import {
 } from 'lucide-react';
 
 const UnifiedSalesPipeline = () => {
-  console.log('🚀 Sales Pipeline Loading...');
-  
   // Stati delle trattative
   const dealStates = [
     { id: 'da_visitare', name: 'Da Visitare', color: 'bg-blue-500', description: 'Cliente da incontrare ancora' },
@@ -357,6 +355,8 @@ const UnifiedSalesPipeline = () => {
       statistics: stats
     };
     
+    console.log('📤 Esportando dati:', dataToExport);
+    
     const dataStr = JSON.stringify(dataToExport, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -376,10 +376,13 @@ const UnifiedSalesPipeline = () => {
     const file = event.target.files[0];
     if (!file) return;
 
+    console.log('📥 Importando file:', file.name);
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const importedData = JSON.parse(e.target.result);
+        console.log('📄 Dati importati:', importedData);
         
         if (importedData.deals && Array.isArray(importedData.deals)) {
           const dealsWithDates = importedData.deals.map(deal => ({
@@ -397,6 +400,7 @@ const UnifiedSalesPipeline = () => {
             
           if (window.confirm(confirmMessage)) {
             setDeals(dealsWithDates);
+            console.log(`✅ Importati ${dealsWithDates.length} deals`);
             alert(`✅ ${dealsWithDates.length} trattative importate con successo!`);
           }
         } else {
@@ -452,15 +456,22 @@ const UnifiedSalesPipeline = () => {
               setCurrentView('pipeline');
               setShowForm(true);
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2"
+            className="text-white px-6 py-2 rounded-lg inline-flex items-center gap-2 transform hover:scale-105 transition-all"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+            }}
           >
             <PlusCircle size={16} />
             Crea Prima Trattativa
           </button>
           
-          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-            <h4 className="text-sm font-semibold text-blue-800 mb-2">🚀 Funzionalità Premium</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-blue-700">
+          <div className="mt-6 p-4 rounded-lg border" style={{
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%)',
+            borderColor: 'rgba(102, 126, 234, 0.2)'
+          }}>
+            <h4 className="text-sm font-semibold mb-2" style={{color: '#667eea'}}>🚀 Funzionalità Premium</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs" style={{color: '#5a6fd8'}}>
               <div className="flex items-center gap-1">
                 <Download size={12} />
                 <span>Export/Import dati</span>
@@ -483,7 +494,7 @@ const UnifiedSalesPipeline = () => {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-2xl shadow-lg">
+            <div className="text-white p-6 rounded-2xl shadow-lg" style={{background: 'linear-gradient(135deg, #667eea 0%, #5a6fd8 100%)'}}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm font-medium">Volume Totale</p>
@@ -497,7 +508,7 @@ const UnifiedSalesPipeline = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg">
+            <div className="text-white p-6 rounded-2xl shadow-lg" style={{background: 'linear-gradient(135deg, #28a745 0%, #218838 100%)'}}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100 text-sm font-medium">Trattative Acquisite</p>
@@ -511,7 +522,7 @@ const UnifiedSalesPipeline = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
+            <div className="text-white p-6 rounded-2xl shadow-lg" style={{background: 'linear-gradient(135deg, #764ba2 0%, #8b5cf6 100%)'}}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-purple-100 text-sm font-medium">Trattative Totali</p>
@@ -525,17 +536,17 @@ const UnifiedSalesPipeline = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-2xl shadow-lg">
+            <div className="text-white p-6 rounded-2xl shadow-lg" style={{background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'}}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm font-medium">Volume Acquisito</p>
+                  <p className="text-red-100 text-sm font-medium">Volume Acquisito</p>
                   <p className="text-2xl font-bold">{formatCurrency(stats.volumeAcquisito)}</p>
                   <div className="flex items-center gap-1 mt-2">
                     <TrendingUp size={16} />
                     <span className="text-sm">Fatturato confermato</span>
                   </div>
                 </div>
-                <Euro size={48} className="text-orange-200" />
+                <Euro size={48} className="text-red-200" />
               </div>
             </div>
           </div>
@@ -609,7 +620,7 @@ const UnifiedSalesPipeline = () => {
             <div className="bg-white p-6 rounded-2xl shadow-lg">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Trend Ultimi 12 Mesi</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={analyticsData.monthlyTrends}>
+                <ComposedChart data={analyticsData.monthlyTrends}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="mese" />
                   <YAxis yAxisId="left" />
@@ -633,7 +644,7 @@ const UnifiedSalesPipeline = () => {
                     strokeWidth={2}
                     name="Tasso %"
                   />
-                </LineChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 
@@ -793,7 +804,11 @@ const UnifiedSalesPipeline = () => {
           <p className="text-gray-500 mb-6">Inizia aggiungendo la tua prima trattativa per gestire il tuo sales pipeline</p>
           <button
             onClick={() => setShowForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2"
+            className="text-white px-6 py-2 rounded-lg inline-flex items-center gap-2 transform hover:scale-105 transition-all"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+            }}
           >
             <PlusCircle size={16} />
             Aggiungi Trattativa
@@ -953,7 +968,11 @@ const UnifiedSalesPipeline = () => {
               setCurrentView('pipeline');
               setShowForm(true);
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg inline-flex items-center gap-2"
+            className="text-white px-6 py-2 rounded-lg inline-flex items-center gap-2 transform hover:scale-105 transition-all"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+            }}
           >
             <PlusCircle size={16} />
             Crea Trattativa
@@ -1032,11 +1051,11 @@ const UnifiedSalesPipeline = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`} style={{backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)'}}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Sales Pipeline</h2>
+          <h2 className="text-xl font-bold" style={{background: 'linear-gradient(45deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>Sales Pipeline</h2>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-gray-500 hover:text-gray-700"
@@ -1057,9 +1076,13 @@ const UnifiedSalesPipeline = () => {
                 }}
                 className={`w-full flex items-center gap-3 px-6 py-3 text-left transition-colors ${
                   currentView === item.id
-                    ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
+                    ? 'text-white border-r-2'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
+                style={currentView === item.id ? {
+                  background: 'linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%)',
+                  borderRightColor: '#667eea'
+                } : {}}
               >
                 <Icon size={20} />
                 {item.name}
@@ -1090,7 +1113,13 @@ const UnifiedSalesPipeline = () => {
               {(currentView === 'pipeline' || (currentView === 'deals' && deals.length > 0)) && (
                 <button
                   onClick={() => setShowForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                  className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors transform hover:scale-105"
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+                  }}
+                  onMouseEnter={(e) => e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)'}
+                  onMouseLeave={(e) => e.target.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)'}
                 >
                   <PlusCircle size={16} />
                   Nuova Trattativa
@@ -1102,16 +1131,30 @@ const UnifiedSalesPipeline = () => {
                 {deals.length > 0 && (
                   <button
                     onClick={exportData}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    className="text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors transform hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, #28a745 0%, #218838 100%)',
+                      boxShadow: '0 4px 15px rgba(40, 167, 69, 0.3)'
+                    }}
                     title="Scarica backup dei dati"
+                    onMouseEnter={(e) => e.target.style.boxShadow = '0 6px 20px rgba(40, 167, 69, 0.4)'}
+                    onMouseLeave={(e) => e.target.style.boxShadow = '0 4px 15px rgba(40, 167, 69, 0.3)'}
                   >
                     <Download size={16} />
                     <span className="hidden sm:inline">Export</span>
                   </button>
                 )}
                 
-                <label className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
-                       title="Carica dati da backup">
+                <label 
+                  className="text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer transform hover:scale-105"
+                  style={{
+                    background: 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)',
+                    boxShadow: '0 4px 15px rgba(255, 193, 7, 0.3)'
+                  }}
+                  title="Carica dati da backup"
+                  onMouseEnter={(e) => e.target.style.boxShadow = '0 6px 20px rgba(255, 193, 7, 0.4)'}
+                  onMouseLeave={(e) => e.target.style.boxShadow = '0 4px 15px rgba(255, 193, 7, 0.3)'}
+                >
                   <RefreshCw size={16} />
                   <span className="hidden sm:inline">Import</span>
                   <input
@@ -1125,8 +1168,14 @@ const UnifiedSalesPipeline = () => {
                 {deals.length > 0 && (
                   <button
                     onClick={clearAllData}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    className="text-white px-3 py-2 rounded-lg flex items-center gap-2 transition-colors transform hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                      boxShadow: '0 4px 15px rgba(220, 53, 69, 0.3)'
+                    }}
                     title="Cancella tutti i dati"
+                    onMouseEnter={(e) => e.target.style.boxShadow = '0 6px 20px rgba(220, 53, 69, 0.4)'}
+                    onMouseLeave={(e) => e.target.style.boxShadow = '0 4px 15px rgba(220, 53, 69, 0.3)'}
                   >
                     <Trash2 size={16} />
                     <span className="hidden sm:inline">Reset</span>
@@ -1276,7 +1325,11 @@ const UnifiedSalesPipeline = () => {
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={handleSubmit}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                    className="flex-1 text-white py-2 px-4 rounded-lg transition-all transform hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+                    }}
                   >
                     {selectedDeal ? 'Aggiorna' : 'Crea'} Trattativa
                   </button>
